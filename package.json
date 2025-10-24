@@ -1,0 +1,56 @@
+{
+  "name": "halloweenify",
+  "version": "0.1.0",
+  "description": "Applique un thème décoratif d'Halloween à une page web de manière configurable.",
+  "author": "Carolinedanslesnuages",
+  "license": "MIT",
+  "keywords": [
+    "halloween",
+    "theme",
+    "javascript",
+    "typescript",
+    "ui",
+    "dom",
+    "effects",
+    "spooky",
+    "witch",
+    "decoration",
+    "date-based"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VOTRE_PSEUDO_GITHUB/VOTRE_REPO.git"
+  },
+  "homepage": "https://github.com/VOTRE_PSEUDO_GITHUB/VOTRE_REPO#readme",
+  "bugs": {
+    "url": "https://github.com/VOTRE_PSEUDO_GITHUB/VOTRE_REPO/issues"
+  },
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build:types": "tsc --emitDeclarationOnly --outDir dist/types",
+    "build:rollup": "rollup -c",
+    "build": "npm run build:types && npm run build:rollup",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "rollup": "^3.0.0",
+    "rollup-plugin-typescript2": "^0.34.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "typescript": "^5.0.0"
+  }
+}

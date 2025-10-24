@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Le Jardin Zen - Conseils et Astuces</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* Styles de base pour la démo "Jardin Zen" */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.7;
+      margin: 0;
+      padding: 0;
+      background-color: #f0fdf4; 
+      color: #1f2937;
+    }
+    .header {
+      padding: 1rem 2rem;
+      text-align: center;
+    }
+    .header h1 {
+        margin: 0;
+        font-size: 2.5rem; /* Considéré comme grand texte */
+        font-weight: 300;
+        /* La couleur blanche hérite du header, le contraste est maintenant OK */
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      background: #ffffff;
+      padding: 20px 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+    h2 {
+      color: #166534; /* Vert foncé */
+      border-bottom: 2px solid #a7f3d0; /* Vert clair */
+      padding-bottom: 5px;
+      margin-top: 2rem;
+    }
+    a {
+      color: #15803d; /* Vert lien */
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul {
+        list-style: square;
+        padding-left: 20px;
+    }
+    button {
+      padding: 10px 18px;
+      margin-right: 10px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background-color 0.2s ease;
+    }
+    #apply-theme {
+      /* [CONTRASTE FIX] Texte noir sur fond orange pour un meilleur contraste */
+      background-color: #ff9900;
+      color: #000000; /* Ancien: white (ratio 2.26), Nouveau: black (ratio 9.3 - Excellent) */
+      font-weight: bold; /* Un peu plus visible */
+    }
+    #apply-theme:hover { background-color: #f97316; }
+    #remove-theme { background-color: #d1d5db; color: #4b5563; } /* Gris */
+    #remove-theme:hover { background-color: #9ca3af; }
+
+    /* Petit espace pour le bouton toggle Halloweenify */
+    body { padding-bottom: 50px; }
+
+  </style>
+  </head>
+<body>
+  <header class="header">
+    <h1>Le Jardin Zen</h1>
+  </header>
+
+  <main class="container">
+    <h2>Bienvenue dans notre Oasis de Verdure !</h2>
+    <p>Le jardinage est une activité relaxante et enrichissante. Que vous ayez un grand jardin, un balcon ou juste un rebord de fenêtre, il y a toujours une plante qui n'attend que vous ! Explorez nos conseils pour créer votre propre coin de nature.</p>
+
+    <button id="apply-theme">🎃 Activer le Thème Halloween !</button>
+    <button id="remove-theme" style="display: none;">Retirer le Thème Halloween</button>
+
+    <h2>Planter des Bulbes d'Automne</h2>
+    <p>L'automne est la saison idéale pour planter les bulbes qui fleuriront au printemps prochain. Tulipes, jonquilles, crocus... préparez dès maintenant un spectacle coloré !</p>
+    <ul>
+      <li>Choisissez un emplacement ensoleillé ou mi-ombragé.</li>
+      <li>Ameublissez bien la terre.</li>
+      <li>Plantez les bulbes à la bonne profondeur (environ 2-3 fois leur hauteur).</li>
+      <li>Pensez à les protéger des <a href="#">rongeurs gourmands</a> !</li>
+    </ul>
+
+    <h2>Préparer le Jardin pour l'Hiver</h2>
+    <p>Avant les premières gelées, quelques gestes simples protégeront vos plantes :</p>
+    <ol>
+      <li>Rentrez les plantes fragiles (géraniums, agrumes...).</li>
+      <li>Paillez le pied des arbustes et vivaces sensibles au froid.</li>
+      <li>Nettoyez les feuilles mortes (sauf si elles servent de paillis naturel).</li>
+      <li>Videz et nettoyez vos <a href="#">outils de jardinage</a>.</li>
+    </ol>
+
+    <h2>Idée Recette : Soupe Réconfortante</h2>
+    <p>Quoi de mieux qu'une bonne soupe après une journée au jardin ? Découvrez notre recette facile de <a href="#">velouté aux légumes d'automne</a>.</p>
+
+  </main> <script type="module">
+      // 1. Importer le package et la fonction de nettoyage
+      import halloweenify, { removeHalloweenify } from '../dist/esm/index.js'; // Chemin depuis test/ vers dist/
+
+      // 2. Récupérer les boutons
+      const applyBtn = document.getElementById('apply-theme');
+      const removeBtn = document.getElementById('remove-theme');
+      let isThemeActive = false; // Pour savoir si le thème est actif
+
+      // 3. Logique du bouton "Activer"
+      if (applyBtn && removeBtn) {
+        applyBtn.addEventListener('click', () => {
+          if (isThemeActive) return;
+
+          console.log("Activation du thème Halloween..."); // Log pour débogage
+
+          halloweenify({
+            force: true, // Force l'activation pour la démo
+            startDate: '10-25',
+            endDate: '10-31',
+
+            // --- Chemins (depuis la racine, via ../ depuis test/) ---
+            //backgroundTexturePath: '../assets/web.png', // Mettez null pour un fond blanc
+            overlayLogoPath: '../assets/Witch.svg', // Assurez-vous d'avoir Witch.svg
+            // cursorPath: '../assets/cursor.png', // Utilisez un PNG si l'emoji pose problème
+            faviconPath: '../assets/favicon-pumpkin.ico',
+
+            // --- Options ---
+            spiderOpacity: 0.35,
+            logoPosition: 'center',
+            enableWebs: true,
+            enableCursor: true,       // Utilise l'emoji citrouille comme curseur
+            enableLogo: true,
+            enableTitleEmoji: true,
+            enableScrollbar: true,
+            enableConsoleMessage: true,
+            enableGhostLinks: true,
+            enableFont: true,
+            enableFavicon: true,
+            enableUserToggle: true,   // Affiche le bouton [👻 OFF]
+            showDragHint: true,       // Affiche la bulle d'aide
+
+            exposeCleanup: true // Permet d'appeler window.__halloweenify_remove()
+          });
+
+          isThemeActive = true;
+          applyBtn.style.display = 'none';
+          removeBtn.style.display = 'inline-block';
+        });
+
+        // 4. Logique du bouton "Retirer"
+        removeBtn.addEventListener('click', () => {
+          if (!isThemeActive) return;
+
+          console.log("Retrait du thème Halloween..."); // Log pour débogage
+
+          // Tente d'appeler la fonction globale exposée (plus sûr)
+          if (typeof window.__halloweenify_remove === 'function') {
+             window.__halloweenify_remove();
+          } else {
+              // Solution de secours si exposeCleanup était false ou a échoué
+              console.warn("Fonction de nettoyage globale non trouvée, tentative via import.");
+              try {
+                removeHalloweenify();
+              } catch (e) {
+                console.error("Impossible de retirer le thème via la fonction importée.", e);
+              }
+          }
+
+          isThemeActive = false;
+          applyBtn.style.display = 'inline-block';
+          removeBtn.style.display = 'none';
+        });
+
+      } else {
+        console.warn('Boutons #apply-theme ou #remove-theme introuvables.');
+      }
+  </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# Fichiers et dossiers générés par Node/NPM/Yarn
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json # Si vous préférez ne pas le commiter (généralement on le commit)
+# yarn.lock # Décommentez si vous utilisez Yarn
+# pnpm-lock.yaml # Décommentez si vous utilisez PNPM
+
+# Dossier de build (contient le code compilé)
+dist/
+
+# Fichiers de configuration spécifiques à l'IDE/éditeur
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de log
+*.log
+logs/
+
+# Fichiers temporaires ou de cache
+.npm/
+.eslintcache
+.jestcache
+.cache/
+coverage/
+
+# Fichiers d'environnement
+.env
+.env.*
+!.env.example
+
+# Archives de package (créées par npm pack)
+*.tgz
