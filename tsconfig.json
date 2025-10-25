@@ -2,7 +2,6 @@
   "compilerOptions": {
     "target": "ES2019",
     "module": "ESNext",
-    "declaration": true,
     "strict": true,
     "esModuleInterop": true,
     "moduleResolution": "Node",
@@ -10,5 +9,6 @@
     "allowJs": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "test/**/*", "test/shims.d.ts"]
+  "include": ["src/**/*", "test/**/*", "test/shims.d.ts"],
+  "exclude": ["node_modules", "dist"] 
 }
