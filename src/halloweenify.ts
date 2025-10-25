@@ -2,9 +2,8 @@
  * src/halloweenify.ts
  *
  * Package Halloweenify : Thème de décoration minimaliste et configurable.
- * Inclut une bulle d'aide pour le logo déplaçable.
- * * [VERSION 4 - THÈME "PUMPKIN ORANGE" + SURCHARGE HEADER/FOOTER]
- */
+ * Applique un thème Halloween à une page web avec options personnalisables.
+ * */
 
 export type LogoPosition = 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
@@ -41,17 +40,24 @@ const USER_DISABLE_KEY = 'halloweenify_disabled_until';
 const TOGGLE_BUTTON_ID = 'spooky-toggle-button';
 const HINT_BUBBLE_ID = 'spooky-hint-bubble';
 const THEME_COLOR_META_ID = 'spooky-theme-color';
+const ACTIVE_BODY_CLASS = 'halloweenify-active'; // [NOUVEAU] Classe CSS pour le body
 
 // --- Variables globales ---
+// [MODIFICATION START] - Variables pour Drag-and-Drop optimisé et Ghost Links
 let isDragging = false;
 let dragTarget: HTMLElement | null = null;
 let offsetX = 0;
 let offsetY = 0;
+let lastDragX = 0; // Stocke la dernière position X
+let lastDragY = 0; // Stocke la dernière position Y
+let dragMoveScheduled = false; // Verrou pour rAF
+
 let originalTitle: string | null = null;
 let originalFaviconHref: string | null = null;
 let ghostLinkElement: HTMLDivElement | null = null;
-let ghostLinkListenerAttached = false;
+// let ghostLinkListenerAttached = false; // Supprimé, remplacé par délégation
 let hintBubbleTimeout: ReturnType<typeof setTimeout> | null = null;
+// [MODIFICATION END]
 
 // --- Fonctions utilitaires ---
 
@@ -161,14 +167,27 @@ function disableThemeForToday(): void {
 
 
 // --- Fonctions de Drag-and-Drop ---
-
+// [MODIFICATION START] - Fonctions Drag-and-Drop optimisées avec requestAnimationFrame
 function handleDragMove(e: MouseEvent) {
   if (!isDragging || !dragTarget) return;
   e.preventDefault();
-  const newX = e.clientX - offsetX;
-  const newY = e.clientY - offsetY;
-  dragTarget.style.left = `${newX}px`;
-  dragTarget.style.top = `${newY}px`;
+
+  // 1. Stocker les dernières coordonnées calculées
+  lastDragX = e.clientX - offsetX;
+  lastDragY = e.clientY - offsetY;
+
+  // 2. Si un frame est déjà en attente, ne pas en demander un nouveau
+  if (dragMoveScheduled) return;
+
+  // 3. Verrouiller et demander un frame d'animation
+  dragMoveScheduled = true;
+  requestAnimationFrame(() => {
+    if (dragTarget) { // Vérifier si on est toujours en train de drag
+        dragTarget.style.left = `${lastDragX}px`;
+        dragTarget.style.top = `${lastDragY}px`;
+    }
+    dragMoveScheduled = false; // 4. Déverrouiller
+  });
 }
 
 function handleDragEnd() {
@@ -177,16 +196,15 @@ function handleDragEnd() {
   }
   isDragging = false;
   dragTarget = null;
+  dragMoveScheduled = false; // Assurer le déverrouillage
   document.removeEventListener('mousemove', handleDragMove);
   document.removeEventListener('mouseup', handleDragEnd);
 }
+// [MODIFICATION END]
 
 
 // --- Fonctions d'injection et de suppression ---
 
-/**
- * Injecte la balise meta "theme-color" pour la barre de titre mobile
- */
 function injectThemeColorMeta(color: string): void {
   if (typeof document === 'undefined') return;
   let meta = document.getElementById(THEME_COLOR_META_ID) as HTMLMetaElement | null;
@@ -199,9 +217,6 @@ function injectThemeColorMeta(color: string): void {
   meta.content = color;
 }
 
-/**
- * Retire la balise meta "theme-color"
- */
 function removeThemeColorMeta(): void {
     if (typeof document === 'undefined') return;
     const meta = document.getElementById(THEME_COLOR_META_ID);
@@ -211,7 +226,6 @@ function removeThemeColorMeta(): void {
 }
 
 /**
- * [NOUVEAU THÈME ORANGE]
  * Injecte le CSS du thème dans le <head>
  */
 function injectTheme(
@@ -235,108 +249,92 @@ function injectTheme(
 
   const spiderWebUri = makeSpiderWebDataUri();
 
-  const cursorStyle = enableCursor
-    ? `cursor: url('${makeEmojiCursorUri('🎃')}') 0 0, auto !important;` // Citrouille
+  const cursorStyleRule = enableCursor
+    ? `body.${ACTIVE_BODY_CLASS} { cursor: url('${makeEmojiCursorUri('🎃')}') 0 0, auto !important; }`
     : '';
 
-  // [NOUVEAU THÈME] Variables CSS pour le mode lumineux "Pumpkin Spice"
-  const lightThemeBg = '#FAF8F1'; // Parchemin
-  let backgroundAndColorStyles = `
+  let backgroundAndColorStyles = '';
+  const lightThemeBg = '#FAF8F1';
+  backgroundAndColorStyles = `
+    /* --- Thème Clair (Pumpkin Spice) --- */
     :root {
-      /* Palette "Pumpkin Spice" (Lumineux) */
       --spooky-bg: ${lightThemeBg};
-      --spooky-text: #222222;       /* Gris foncé (Contraste 17:1) */
-      --spooky-heading: #D95B00;    /* Orange foncé (Contraste 5.4:1) */
-      --spooky-link: #5D3A9B;       /* Violet (Contraste 5.3:1) */
-
-      /* Composants */
+      --spooky-text: #222222;
+      --spooky-heading: #D95B00;
+      --spooky-link: #5D3A9B;
       --spooky-scrollbar-track: #e0ddd5;
       --spooky-scrollbar-thumb: var(--spooky-heading);
       --spooky-scrollbar-border: var(--spooky-bg);
-      
       --spooky-toggle-bg: #D95B00;
       --spooky-toggle-text: #FFFFFF;
       --spooky-toggle-hover-bg: #FFA500;
       --spooky-toggle-hover-text: #000000;
-
       --spooky-hint-bg: #333333;
       --spooky-hint-text: #FFFFFF;
       --spooky-hint-border: var(--spooky-heading);
-
       --spooky-logo-border: var(--spooky-heading);
     }
-    
-    html, body { 
-      background-color: var(--spooky-bg) !important; 
-      color: var(--spooky-text) !important; 
+    body.${ACTIVE_BODY_CLASS} {
+      background-color: var(--spooky-bg) !important;
+      color: var(--spooky-text) !important;
     }
-    h1, h2, h3 { 
-      color: var(--spooky-heading) !important; 
+    .${ACTIVE_BODY_CLASS} h1, .${ACTIVE_BODY_CLASS} h2, .${ACTIVE_BODY_CLASS} h3 {
+      color: var(--spooky-heading) !important;
     }
-    a { 
-      color: var(--spooky-link) !important; 
+    .${ACTIVE_BODY_CLASS} a {
+      color: var(--spooky-link) !important;
       text-decoration: underline dotted rgba(0,0,0,0.3);
     }
   `;
-  
   injectThemeColorMeta(lightThemeBg);
 
   if (backgroundTexturePath) {
-    // [NOUVEAU THÈME] Mode Texturé "Midnight Pumpkin"
-    const darkThemeBg = '#181818'; // Nuit
+    const darkThemeBg = '#181818';
     backgroundAndColorStyles = `
+    /* --- Thème Sombre (Midnight Pumpkin) --- */
     :root {
-      /* Palette "Midnight Pumpkin" (Sombre) */
       --spooky-bg: ${darkThemeBg};
-      --spooky-text: #E0E0E0;         /* Gris spectral (Contraste 15:1) */
-      --spooky-heading: #FFA500;      /* Orange Vif (Contraste 11.7:1) */
-      --spooky-link: #C490FF;         /* Violet clair (Contraste 7.5:1) */
-
-      /* Composants */
+      --spooky-text: #E0E0E0;
+      --spooky-heading: #FFA500;
+      --spooky-link: #C490FF;
       --spooky-scrollbar-track: #222222;
       --spooky-scrollbar-thumb: var(--spooky-heading);
       --spooky-scrollbar-border: var(--spooky-bg);
-      
       --spooky-toggle-bg: #FFA500;
-      --spooky-toggle-text: #000000; /* Contraste 5.1:1 */
+      --spooky-toggle-text: #000000;
       --spooky-toggle-hover-bg: #FFC500;
       --spooky-toggle-hover-text: #000000;
-
       --spooky-hint-bg: #E0E0E0;
       --spooky-hint-text: ${darkThemeBg};
       --spooky-hint-border: var(--spooky-heading);
-
       --spooky-logo-border: var(--spooky-heading);
     }
-
-    html, body {
-      background-color: var(--spooky-bg) !important; /* Couleur de repli */
+    body.${ACTIVE_BODY_CLASS} {
+      background-color: var(--spooky-bg) !important; /* Repli */
       background-image: url("${backgroundTexturePath}") !important;
       background-repeat: tile !important;
       color: var(--spooky-text) !important;
     }
-    h1, h2, h3 { 
-      color: var(--spooky-heading) !important; 
+    .${ACTIVE_BODY_CLASS} h1, .${ACTIVE_BODY_CLASS} h2, .${ACTIVE_BODY_CLASS} h3 {
+      color: var(--spooky-heading) !important;
     }
-    a { 
-      color: var(--spooky-link) !important; 
-      text-decoration: underline dashed rgba(196, 144, 255, 0.25); 
+    .${ACTIVE_BODY_CLASS} a {
+      color: var(--spooky-link) !important;
+      text-decoration: underline dashed rgba(196, 144, 255, 0.25);
     }
     `;
-    
     injectThemeColorMeta(darkThemeBg);
   }
 
   const fontStyles = enableFont ? `
 @import url('https://fonts.googleapis.com/css2?family=Creepster&display.swap');
-h1, h2, h3 { 
-  font-family: 'Creepster', cursive !important; 
-  letter-spacing: 0.5px; 
-  color: var(--spooky-heading) !important;
+.${ACTIVE_BODY_CLASS} h1, .${ACTIVE_BODY_CLASS} h2, .${ACTIVE_BODY_CLASS} h3 {
+  font-family: 'Creepster', cursive !important;
+  letter-spacing: 0.5px;
 }
 ` : `
-h1, h2, h3 { 
-  color: var(--spooky-heading) !important; 
+.${ACTIVE_BODY_CLASS} h1, .${ACTIVE_BODY_CLASS} h2, .${ACTIVE_BODY_CLASS} h3 {
+  color: var(--spooky-heading) !important;
 }
 `;
 
@@ -373,16 +371,16 @@ body::after  { top: 0px; right: 0px; transform: rotate(8deg) translateY(-8px); }
   #${GHOST_LINK_ID}.visible { opacity: 0.8; }
  ` : '';
 
-  // [NOUVEAU] Styles pour surcharger le header et le footer
   const headerFooterOverrideStyle = `
-  header, footer {
+  /* Surcharge Header/Footer */
+  .${ACTIVE_BODY_CLASS} header, .${ACTIVE_BODY_CLASS} footer {
     color: var(--spooky-text) !important;
   }
-  header h1, header h2, header h3,
-  footer h1, footer h2, footer h3 {
+  .${ACTIVE_BODY_CLASS} header h1, .${ACTIVE_BODY_CLASS} header h2, .${ACTIVE_BODY_CLASS} header h3,
+  .${ACTIVE_BODY_CLASS} footer h1, .${ACTIVE_BODY_CLASS} footer h2, .${ACTIVE_BODY_CLASS} footer h3 {
     color: var(--spooky-heading) !important;
   }
-  header a, footer a {
+  .${ACTIVE_BODY_CLASS} header a, .${ACTIVE_BODY_CLASS} footer a {
     color: var(--spooky-link) !important;
   }
   `;
@@ -414,25 +412,20 @@ body::after  { top: 0px; right: 0px; transform: rotate(8deg) translateY(-8px); }
       break;
   }
 
-  // Utilise les variables CSS pour un contraste élevé
   const toggleButtonStyle = enableUserToggle ? `
 #${TOGGLE_BUTTON_ID} {
   position: fixed; bottom: 10px; left: 10px;
-  background: var(--spooky-toggle-bg);
-  color: var(--spooky-toggle-text);
-  border: 1px solid rgba(128, 128, 128, 0.4);
-  border-radius: 4px; padding: 2px 6px; font-size: 10px; font-family: sans-serif;
-  cursor: pointer; z-index: 10002; text-decoration: none; opacity: 0.8;
+  background: var(--spooky-toggle-bg); color: var(--spooky-toggle-text);
+  border: 1px solid rgba(128, 128, 128, 0.4); border-radius: 4px; padding: 2px 6px;
+  font-size: 10px; font-family: sans-serif; cursor: pointer; z-index: 10002;
+  text-decoration: none; opacity: 0.8;
   transition: opacity 0.2s, background-color 0.2s, color 0.2s;
 }
 #${TOGGLE_BUTTON_ID}:hover {
-  opacity: 1; 
-  background: var(--spooky-toggle-hover-bg); 
-  color: var(--spooky-toggle-hover-text);
+  opacity: 1; background: var(--spooky-toggle-hover-bg); color: var(--spooky-toggle-hover-text);
 }
 ` : '';
 
-  // Utilise les variables CSS pour la bulle
   const hintBubbleStyle = showDragHint ? `
 #${HINT_BUBBLE_ID} {
     position: fixed; top: ${hintTop}; left: ${hintLeft};
@@ -456,27 +449,23 @@ body::after  { top: 0px; right: 0px; transform: rotate(8deg) translateY(-8px); }
 }
 ` : '';
 
-
   const css = `
-/* halloweenify: THÈME ORANGE (High Contrast) */
-${enableFont ? "@import url('https://fonts.googleapis.com/css2?family=Creepster&display.swap');" : ''}
+/* halloweenify: Theme */
 
-html, body { min-height: 100vh; margin: 0; padding: 0; }
-
-/* Styles de couleur de base (variables définies ci-dessus) */
+/* Styles conditionnels de base (variables, couleurs body/h/a) */
 ${backgroundAndColorStyles}
 
-/* Styles communs */
-body { ${cursorStyle} }
+/* Style curseur (appliqué via classe body) */
+${cursorStyleRule}
+
+/* Styles optionnels (appliqués via classe body ou directement) */
 ${fontStyles}
 ${scrollbarStyle}
 ${websStyle}
 ${ghostLinkStyle}
-
-/* [NOUVEAU] Surcharge Header/Footer */
 ${headerFooterOverrideStyle}
 
-/* Style pour le logo de la sorcière (déplaçable) */
+/* Styles des éléments ajoutés */
 #${LOGO_ID} {
   position: fixed; ${logoPositionStyle}
   width: 90%; max-width: 400px; max-height: 80vh; object-fit: contain;
@@ -484,20 +473,10 @@ ${headerFooterOverrideStyle}
   filter: drop-shadow(0 4px 15px rgba(0,0,0,0.3)); border: 2px dashed transparent;
   transition: border-color 0.3s ease, left 0.1s linear, top 0.1s linear;
 }
-/* Utilise la variable à fort contraste pour la bordure */
-#${LOGO_ID}.is-draggable { 
-  cursor: grab; 
-  border-color: var(--spooky-logo-border); 
-}
-#${LOGO_ID}.is-dragging { 
-  cursor: grabbing; opacity: 0.8; z-index: 10000; 
-  transition: border-color 0.3s ease; 
-}
+#${LOGO_ID}.is-draggable { cursor: grab; border-color: var(--spooky-logo-border); }
+#${LOGO_ID}.is-dragging { cursor: grabbing; opacity: 0.8; z-index: 10000; transition: border-color 0.3s ease; }
 
-/* Style pour la bulle d'aide (si activée) */
 ${hintBubbleStyle}
-
-/* Style pour le bouton toggle (si activée) */
 ${toggleButtonStyle}
 `.trim();
 
@@ -510,11 +489,10 @@ ${toggleButtonStyle}
   head.appendChild(styleEl);
 }
 
-// Fonction pour retirer la bulle d'aide
 function removeHintBubble(): void {
   if (typeof document === 'undefined') return;
   if (hintBubbleTimeout) {
-      clearTimeout(hintBubbleTimeout); // Annule le timer si actif
+      clearTimeout(hintBubbleTimeout);
       hintBubbleTimeout = null;
   }
   const bubble = document.getElementById(HINT_BUBBLE_ID);
@@ -525,7 +503,6 @@ function removeHintBubble(): void {
 
 /**
  * Crée et injecte l'image du logo avec la logique de drag-and-drop
- * Ajoute la bulle d'aide
  */
 function injectLogoImage(logoPath: string, showHint: boolean): void {
   if (typeof document === 'undefined' || !document.body) return;
@@ -538,7 +515,6 @@ function injectLogoImage(logoPath: string, showHint: boolean): void {
 
   let isDraggable = false;
 
-  // Injecter la bulle d'aide SI showHint est true
   let hintBubble: HTMLDivElement | null = null;
   if (showHint) {
     hintBubble = document.createElement('div');
@@ -547,14 +523,12 @@ function injectLogoImage(logoPath: string, showHint: boolean): void {
     hintBubble.style.opacity = '1';
     document.body.appendChild(hintBubble);
 
-    // Timer pour faire disparaître la bulle après 5 secondes
     hintBubbleTimeout = setTimeout(() => {
         if (hintBubble) {
             hintBubble.classList.add('fade-out');
-            // Supprimer l'élément après la transition CSS (0.5s + 0.2s délai)
             setTimeout(() => removeHintBubble(), 700);
         }
-    }, 5000); // 5 secondes
+    }, 5000);
   }
 
   imgEl.ondblclick = (e) => {
@@ -564,21 +538,19 @@ function injectLogoImage(logoPath: string, showHint: boolean): void {
     removeHintBubble();
   };
 
-  // 2. Clic pour commencer le déplacement
   imgEl.onmousedown = (e: MouseEvent) => {
     if (!isDraggable) return;
     e.preventDefault();
-    // Cache la bulle si l'utilisateur commence à déplacer
     removeHintBubble();
 
     isDragging = true;
     dragTarget = imgEl;
     imgEl.classList.add('is-dragging');
-    
+
     const rect = imgEl.getBoundingClientRect();
     offsetX = e.clientX - rect.left;
     offsetY = e.clientY - rect.top;
-    
+
     if (imgEl.style.transform.includes('translate')) {
         imgEl.style.top = `${rect.top}px`;
         imgEl.style.left = `${rect.left}px`;
@@ -594,52 +566,73 @@ function injectLogoImage(logoPath: string, showHint: boolean): void {
   document.body.appendChild(imgEl);
 }
 
+// [MODIFICATION START] - Remplacement de Ghost Links par Délégation d'Événements
+
+/**
+ * Gère l'affichage du fantôme en fonction de la position de la souris
+ * (Utilisé pour la délégation d'événements)
+ */
+const handleGhostLinkHover = (e: MouseEvent) => {
+    if (!ghostLinkElement) return;
+
+    // Trouver si la souris est sur un lien (ou un enfant de lien)
+    const link = (e.target as HTMLElement).closest('a');
+
+    if (link) {
+        // MOUSEENTER sur <a>
+        ghostLinkElement.style.left = `${e.clientX}px`;
+        ghostLinkElement.style.top = `${e.clientY}px`;
+        ghostLinkElement.classList.add('visible');
+    } else {
+        // MOUSELEAVE de <a>
+        ghostLinkElement.classList.remove('visible');
+    }
+};
+
+/**
+ * Cache le fantôme si la souris quitte la fenêtre du document
+ */
+const handleGhostLinkLeave = (e: MouseEvent) => {
+    // e.relatedTarget est null quand on quitte la fenêtre
+    if (ghostLinkElement && !e.relatedTarget) {
+         ghostLinkElement.classList.remove('visible');
+    }
+}
+
 /**
  * Gère l'effet "Ghost Link"
  */
 function setupGhostLinks(): void {
-  if (typeof document === 'undefined' || ghostLinkListenerAttached) return;
+  if (typeof document === 'undefined' || ghostLinkElement) return; // Déjà attaché
 
   ghostLinkElement = document.createElement('div');
   ghostLinkElement.id = GHOST_LINK_ID;
   ghostLinkElement.textContent = '👻';
   document.body.appendChild(ghostLinkElement);
 
-  const showGhost = (e: MouseEvent) => {
-    if (ghostLinkElement) {
-        ghostLinkElement.style.left = `${e.clientX}px`;
-        ghostLinkElement.style.top = `${e.clientY}px`;
-        ghostLinkElement.classList.add('visible');
-    }
-  };
-
-  const hideGhost = () => {
-    if (ghostLinkElement) {
-        ghostLinkElement.classList.remove('visible');
-    }
-  };
-
-  document.querySelectorAll('a').forEach(link => {
-    link.addEventListener('mouseenter', showGhost);
-    link.addEventListener('mouseleave', hideGhost);
-  });
-
-  ghostLinkListenerAttached = true;
+  // Attacher les écouteurs au document (délégation)
+  document.addEventListener('mousemove', handleGhostLinkHover);
+  // Gère le cas où la souris quitte la fenêtre du navigateur
+  document.body.addEventListener('mouseleave', handleGhostLinkLeave);
 }
 
 /**
  * Retire l'effet "Ghost Link"
  */
  function removeGhostLinks(): void {
-  if (typeof document === 'undefined' || !ghostLinkListenerAttached) return;
+  if (typeof document === 'undefined' || !ghostLinkElement) return;
 
-  if (ghostLinkElement?.parentNode) {
+  // Retirer les écouteurs globaux
+  document.removeEventListener('mousemove', handleGhostLinkHover);
+  document.body.removeEventListener('mouseleave', handleGhostLinkLeave);
+
+  // Supprimer l'élément
+  if (ghostLinkElement.parentNode) {
     ghostLinkElement.parentNode.removeChild(ghostLinkElement);
     ghostLinkElement = null;
   }
-  
-  ghostLinkListenerAttached = false;
 }
+// [MODIFICATION END]
 
 /**
  * Change le favicon
@@ -650,13 +643,12 @@ function setFavicon(faviconPath: string): void {
   let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
   let head = document.getElementsByTagName('head')[0];
 
-  // Sauvegarde de l'original
   if (link && link.href && !document.getElementById(DEFAULT_FAVICON_ID)) {
     originalFaviconHref = link.href;
     const originalLink = link.cloneNode(true) as HTMLLinkElement;
     originalLink.id = DEFAULT_FAVICON_ID;
     originalLink.setAttribute('data-halloweenify-original', 'true');
-    originalLink.style.display = 'none'; // Cache l'original
+    originalLink.style.display = 'none';
     head.appendChild(originalLink);
   } else if (!link && !document.getElementById(DEFAULT_FAVICON_ID)) {
       originalFaviconHref = null;
@@ -666,7 +658,6 @@ function setFavicon(faviconPath: string): void {
       head.appendChild(placeholder);
   }
 
-  // Crée ou met à jour le lien favicon
   if (!link || link.getAttribute('data-halloweenify-original') === 'true') {
      link = document.createElement('link');
      link.rel = 'shortcut icon';
@@ -683,7 +674,7 @@ function setFavicon(faviconPath: string): void {
  */
 function restoreFavicon(): void {
     if (typeof document === 'undefined') return;
-    
+
     const currentFavicon: HTMLLinkElement | null = document.querySelector("link[rel*='icon']:not([data-halloweenify-original])");
     const originalPlaceholder: HTMLElement | null = document.getElementById(DEFAULT_FAVICON_ID);
 
@@ -700,7 +691,7 @@ function restoreFavicon(): void {
              newFavicon.href = originalLink.href;
              document.head.appendChild(newFavicon);
         }
-        
+
         if (originalPlaceholder.parentNode) {
             originalPlaceholder.parentNode.removeChild(originalPlaceholder);
         }
@@ -717,7 +708,7 @@ function setSpookyTitle(): void {
   if (originalTitle === null) {
     originalTitle = document.title;
   }
-  if (!document.title.startsWith('🎃')) { // [THÈME ORANGE]
+  if (!document.title.startsWith('🎃')) {
     document.title = '🎃 ' + originalTitle;
   }
 }
@@ -740,7 +731,7 @@ function injectToggleButton(): void {
 
     const button = document.createElement('button');
     button.id = TOGGLE_BUTTON_ID;
-    button.textContent = '🎃 Désactiver le thème'; // [THÈME ORANGE]
+    button.textContent = '🎃 Désactiver';
     button.setAttribute('aria-label', 'Disable Halloween theme for today');
     button.onclick = (e) => {
         e.stopPropagation();
@@ -767,8 +758,9 @@ function removeToggleButton(): void {
  */
 export function removeHalloweenify(): void {
   if (typeof document === 'undefined') return;
-  
-  // Retire CSS, Logo, Toggle Button, Hint Bubble
+
+  document.body.classList.remove(ACTIVE_BODY_CLASS);
+
   const style = document.getElementById(STYLE_ID);
   if (style?.parentNode) style.parentNode.removeChild(style);
 
@@ -777,20 +769,18 @@ export function removeHalloweenify(): void {
 
   removeToggleButton();
   removeHintBubble();
-  removeThemeColorMeta(); // Nettoie la balise meta
+  removeThemeColorMeta();
 
-  // Nettoyage des listeners globaux de drag&drop
   document.removeEventListener('mousemove', handleDragMove);
   document.removeEventListener('mouseup', handleDragEnd);
   isDragging = false;
   dragTarget = null;
+  dragMoveScheduled = false; // [AJOUT] Assurer le reset du verrou rAF
 
-  // Nettoyage des autres fonctionnalités
   removeGhostLinks();
   restoreFavicon();
   restoreTitle();
 
-  // Nettoyage du hook global
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((window as any)[CLEANUP_FN]) {
@@ -841,12 +831,14 @@ export default function halloweenify(options: HalloweenifyOptions = {}): void {
   function run(): void {
     if (finalOptions.enableConsoleMessage) {
       console.log(
-        '%c🎃 Happy Halloween from halloweenify! 🎃', // [THÈME ORANGE]
+        '%c🎃 Happy Halloween from halloweenify! 🎃',
         'color: #FFA500; background: #181818; font-size: 1.2em; padding: 4px; border-radius: 4px; font-weight: bold;'
       );
     }
 
-    // Injecter le CSS (nouveau thème orange)
+
+    document.body.classList.add(ACTIVE_BODY_CLASS);
+
     injectTheme({
         spiderOpacity,
         backgroundTexturePath,
@@ -859,20 +851,19 @@ export default function halloweenify(options: HalloweenifyOptions = {}): void {
         enableUserToggle: finalOptions.enableUserToggle,
         showDragHint: finalOptions.showDragHint,
     });
-    
-    // Injecter l'image du logo (et la bulle si activée)
+
     if (finalOptions.enableLogo && logoPath) {
       injectLogoImage(logoPath, finalOptions.showDragHint);
     }
 
-    if (finalOptions.enableFavicon && faviconPath) { 
+    if (finalOptions.enableFavicon && faviconPath) {
       setFavicon(faviconPath);
     }
-    
+
     if (finalOptions.enableTitleEmoji) {
       setSpookyTitle();
     }
-    
+
     if (finalOptions.enableGhostLinks) {
       setupGhostLinks();
     }
@@ -891,7 +882,6 @@ export default function halloweenify(options: HalloweenifyOptions = {}): void {
     }
   }
 
-  // Attendre que le DOM soit prêt
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', run, { once: true });
   } else {
